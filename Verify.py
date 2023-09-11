@@ -9,6 +9,9 @@ first_line = pd.read_excel("Termes-interdits-poclain-CN-YUAN-V2.xlsx", nrows=1,h
 websites = data.iloc[:,0].values.tolist()
 #the items in first_line from 8th column are the forbidden terms, now we need to store them in a list
 forbidden_terms = first_line.iloc[0,7:].values.tolist()
+#before each forbidden term, there is a "number: ", so we need to remove it
+for i in range(len(forbidden_terms)):
+    forbidden_terms[i] = forbidden_terms[i].split(": ")[1]
 
 print(forbidden_terms)
 
@@ -43,8 +46,24 @@ with open("log.txt","w") as f:
             r = requests.get(website,timeout=10)
             with open("./webs/"+website.split("/")[-1]+".html","w",encoding="utf-8") as f1:
                 f1.write(r.text)
+                
+                # Parse the downloaded HTML content with BeautifulSoup
+            soup = BeautifulSoup(r.text, 'html.parser')
+            content = soup.get_text()
+
+            # Check for each forbidden term in the content
+            for term in forbidden_terms:
+                Output[website][term] = content.lower().count(term.lower())
         except Exception as e:
             f.write(website+": "+str(e)+"\n")
 
 #close the log.txt
 f.close()
+
+#now we need to write the result into a xlsx file
+#first we need to create a dataframe
+df = pd.DataFrame(Output)
+#then we need to transpose the dataframe
+df = df.T
+#then we need to write the dataframe into a xlsx file
+df.to_excel("result.xlsx")
